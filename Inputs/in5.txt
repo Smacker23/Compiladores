@@ -1,0 +1,87 @@
+Modo Trace
+
+												Globals: []
+												Stack: []
+	0: call 11									IP: 0 FP: 0
+												Globals: []
+												Stack: [0, 1]
+	1: lalloc 1									IP: 11 FP: 0
+												Globals: []
+												Stack: [0, 1, NIL]
+	2: lalloc 1									IP: 12 FP: 0
+												Globals: []
+												Stack: [0, 1, NIL, NIL]
+	3: iconst 2									IP: 13 FP: 0
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2]
+	4: iconst 10								IP: 14 FP: 0
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10]
+	5: call 2									IP: 15 FP: 0
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16]
+	6: lload -2									IP: 2 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16, 2]
+	7: lload -1									IP: 3 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16, 2, 10]
+	8: ilt 										IP: 4 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16]
+	9: jumpf 9									IP: 5 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16]
+	10: lload -1								IP: 6 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 2, 10, 0, 16, 10]
+	11: retval 2								IP: 7 FP: 6
+												Globals: []
+												Stack: [0, 1, NIL, NIL, 10]
+	12: lstore 2								IP: 16 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, NIL]
+	13: iconst 5								IP: 17 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, NIL, 5]
+	14: lload 2									IP: 18 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, NIL, 5, 10]
+	15: imult 									IP: 19 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, NIL, 50]
+	16: itod 									IP: 20 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, NIL, 50.0]
+	17: lstore 3								IP: 21 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0]
+	18: lload 3									IP: 22 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0, 50.0]
+	19: lload 2									IP: 23 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0, 50.0, 10]
+	20: itod 									IP: 24 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0, 50.0, 10.0]
+	21: dlt 									IP: 25 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0]
+	22: jumpf 30								IP: 29 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0]
+	23: iconst 4								IP: 30 FP: 0
+												Globals: []
+												Stack: [0, 1, 10, 50.0, 4]
+	24: iprint 									IP: 31 FP: 0
+	4
+												Globals: []
+												Stack: [0, 1, 10, 50.0]
+	25: pop 2									IP: 32 FP: 0
+												Globals: []
+												Stack: [0, 1]
+	26: ret 0									IP: 33 FP: 0
+												Globals: []
+												Stack: []
+	27: halt 									IP: 1 FP: 0

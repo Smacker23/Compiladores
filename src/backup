@@ -1,0 +1,593 @@
+import Sol.g4.SolBaseVisitor;
+import Sol.g4.SolParser;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+
+public class SolCompilerMyVisitor extends SolBaseVisitor<Void> {
+    protected int index = 0;
+    protected ArrayList<Object> pool = new ArrayList<>();
+    protected ArrayList<Integer> byteCodes = new ArrayList<>();
+    protected HashMap<String, CustomValue> variables = new HashMap<>();
+    private static class CustomValue{
+        int index;
+        String type;
+        CustomValue(int i, String s){
+            this.index = i;
+            this.type = s;
+        }
+        public int getIndex() {
+            return index;
+        }
+
+        public String getType() {
+            return type;
+        }
+    }
+    private String type = "";
+
+    /** Este método vai reescrever a variável type (caso necessário), após esta ser chamada entre duas expressões, vai permanecer
+     * aquela que tiver maior valor na hierarquia entre Strings, doubles, ints, seguido esta mesma ordem
+     *
+     * @param s tipo da primeira variável a ser comparada (o tipo da segunda expressão já está guardado no type)
+     */
+    private void setTypeValue(String s){
+        if(s.equals("string"))type = "string";
+        else if(s.equals("real")) type = "real";
+    }
+
+    /** Este método compara dois tipos de variáveis, usando a lógica da hierarquia da função setTypeValue
+     *
+     * @param s1 primeiro Tipo
+     * @param s2 segunda Tipo
+     * @return -1 Caso O primeiro tipo seja superior ao segundo. 0 se ambos forem iguais. 1 Se o segundo for superior ao primeiro
+     */
+    private int compareTo(String s1, String s2){
+        if(s1.equals(s2))
+            return 0;
+        else if(s1.equals("string")) return -1;
+        else if(s2.equals("string")) return 1;
+        else if(s1.equals("real") && s2.equals("int")) return -1;
+        else if(s2.equals("real") && s1.equals("int")) return 1;
+        else return -10;
+    }
+
+    /** Este método serve para converter (caso necessário) as expressões de modo a que ambas sejam do mesmo tipo, para os casos
+     * de soma, subtração, multiplicação e divisão. A lógica por atrás deste método é uma vez mais com base na hierarquia. De destacar
+     * que quando a segunda expressão é a que precisar ser convertida basta inserir o Opcode da conversão no final da ArrayList, já
+     * para o caso de ser a primeira o Opcode será sempre o antepenúltimo index da ArrayList para estes casos.
+     *
+     * @param s String com o tipo da primeira expressão
+     */
+    private void convertToSameType(String s, int index){
+        int comparation = compareTo(s,type);
+        if(comparation == 0)
+            return;
+        else if(comparation == -1){
+            if(s.equals("real"))
+                byteCodes.add(OpCode.itod.ordinal());
+            else {
+                if(type.equals("int"))
+                    byteCodes.add(OpCode.itos.ordinal());
+                else if(type.equals("real"))
+                    byteCodes.add(OpCode.dtos.ordinal());
+                else
+                    byteCodes.add(OpCode.btos.ordinal());
+            }
+        } else if(comparation == 1){
+            if(type.equals("real"))
+                byteCodes.add(index, OpCode.itod.ordinal());
+            else {
+                if(s.equals("int"))
+                    byteCodes.add(index, OpCode.itos.ordinal());
+                else if(s.equals("real"))
+                    byteCodes.add(index, OpCode.dtos.ordinal());
+                else
+                    byteCodes.add(index, OpCode.btos.ordinal());
+            }
+        }else {
+            System.out.println("ERRO (tipos diferentes)");
+            System.exit(0);
+        }
+        this.index++;
+    }
+
+    @Override
+    public Void visitStart(SolParser.StartContext ctx) {
+        for(SolParser.LineContext line : ctx.line())
+            visit(line);
+        byteCodes.add(OpCode.halt.ordinal());
+        return null;
+    }
+
+    @Override
+    public Void visitCasePrint(SolParser.CasePrintContext ctx) {
+        visit(ctx.expr());
+        if(type.equals("int")) byteCodes.add(OpCode.iprint.ordinal());
+        else if(type.equals("real")) byteCodes.add(OpCode.dprint.ordinal());
+        else if(type.equals("string")) byteCodes.add(OpCode.sprint.ordinal());
+        else if(type.equals("bool")) byteCodes.add(OpCode.bprint.ordinal());
+        this.index++;
+        return null;
+    }
+
+    @Override
+    public Void visitCaseVariable(SolParser.CaseVariableContext ctx) {
+        visit(ctx.var());
+        return null;
+    }
+
+    @Override
+    public Void visitCaseEmpty(SolParser.CaseEmptyContext ctx) {
+        return null;
+    }
+
+
+    @Override
+    public Void visitCaseWhile(SolParser.CaseWhileContext ctx) {
+        System.out.println(ctx.getText());
+        visit(ctx.expr(0));
+        if(!type.equals("bool"))
+            System.out.println("PEDRO ERRO VISITCASEWHILE " + type + " NOT BOOL");
+
+        return null;
+    }
+
+    @Override
+    public Void visitCaseFor(SolParser.CaseForContext ctx) {
+        return null;
+    }
+
+    /** Este método insere o Opcode iconst na ArrayList e de seguida insere também o valor do inteiro, para além disse atribui o tipo
+     * da expressão ao valor Int.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitInt(SolParser.IntContext ctx) {
+        type = "int";
+        byteCodes.add(OpCode.iconst.ordinal());
+        try {
+            int add = Integer.parseInt(ctx.getText());
+            byteCodes.add(add);
+        }catch (Exception e){
+            System.exit(0);
+        }
+        this.index++;
+        return null;
+    }
+
+    /** Este método insere o Opcode dconst na ArrayList, verifica se o valor do double já existe na ArrayList pool (constant pool), caso
+     * exista apenas atribuí à ArrayList final o index na pool. Caso contrário adicionamos à pool o valor do double no último index, e
+     * passamos para a ArrayList final esse index. Caso haja algum erro Na conversão do valor para double. É apresentado no terminal
+     * uma mensagem com o devido erro. Por fim atribui-se o valor do Type para double
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitDouble(SolParser.DoubleContext ctx) {
+        type = "real";
+        try{
+            double d = Double.parseDouble(ctx.getText());
+            byteCodes.add(OpCode.dconst.ordinal());
+            if(!pool.contains(d)){
+                byteCodes.add(pool.size());
+                pool.add(d);
+            }else
+                byteCodes.add(pool.indexOf(d));
+        } catch (Exception e){
+            System.out.println("runtime error: \"" + OpCode.valueOf(ctx.getText()) + "\" precisa de um Double");
+            System.exit(0);
+        }
+        this.index++;
+        return null;
+    }
+
+    /** Este método insere o Opcode sconst na ArrayList, verifica se o valor do double já existe na ArrayList pool (constant pool), caso
+     * exista apenas atribuí à ArrayList final o index na pool. Caso contrário adicionamos à pool o valor da string no último index, e
+     * passamos para a ArrayList final esse index. Por fim atribui-se o valor do Type para string
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitString(SolParser.StringContext ctx) {
+        type = "string";
+        byteCodes.add(OpCode.sconst.ordinal());
+        if(pool.contains(ctx.getText()))
+            byteCodes.add(pool.indexOf(ctx.getText()));
+        else {
+            byteCodes.add(pool.size());
+            pool.add(ctx.getText());
+        }
+        this.index++;
+        return null;
+    }
+
+    /** Este método adiciona o Opcode tconst, caso o comando seja true, ou Opcode fconst caso seja false.
+     * Por fim atribui-se o valor do Type para boolean
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitBoolean(SolParser.BooleanContext ctx) {
+        type = "bool";
+        if(ctx.getText().equals("true"))
+            byteCodes.add(OpCode.tconst.ordinal());
+        else
+            byteCodes.add(OpCode.fconst.ordinal());
+        this.index++;
+        return null;
+    }
+
+    @Override
+    public Void visitVariable(SolParser.VariableContext ctx) {
+        if(!variables.containsKey(ctx.getText()))
+            System.out.println("ERRO PEDRO VAR " + ctx.getText() + " NÃO DEFINIDA (VISITVARIABLE)");
+        byteCodes.add(OpCode.gload.ordinal());
+        byteCodes.add(variables.get(ctx.getText()).index);
+        type = variables.get(ctx.getText()).type;
+        this.index++;
+        return null;
+    }
+
+    /** Este método visita as expressões unárias, poderá ter apenas dois comandos, sendo eles "not" para o caso dos booleanos, e "-"
+     * para o casos dos ints, doubles. Inicialmente faz-se uma verificação para caso o type da expressão seja string, caso seja
+     * é acionado no terminal uma mensagem de erro e código encerra. Para o caso dos booleanos adiciona-se à ArrayList o Opcode
+     * not. Caso seja "-1" adiciona-se o Opcode iuminus, ou duminus consoante o type que for.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitUnaryExpression(SolParser.UnaryExpressionContext ctx) {
+        visit(ctx.expr());
+        if(type.equals("string")){
+            System.out.println("ERRO OPERAÇÃO UNARIA STRING");
+            System.exit(0);
+        } else if(type.equals("bool"))
+            byteCodes.add(OpCode.not.ordinal());
+        else if(type.equals("real"))
+            byteCodes.add(OpCode.duminus.ordinal());
+        else if(type.equals("int"))
+            byteCodes.add(OpCode.iuminus.ordinal());
+        this.index++;
+        return null;
+    }
+
+    /** Este método visita as expressões de soma e subtração. Inicialmente visita a expressão da esquerda e direita, converte
+     * as expressões para o mesmo tipo caso seja necessário. Por fim analisa o operador e faz a operações consoante o tipo
+     * sendo as possiblidades (após feita as conversões) Opcode iadd, isub entre dois inteiros. dadd, dsub entre dois doubles, ou
+     * sadd entre duas strings. Caso tente-se subtrair duas strings, será apresentado uma mensagem de erro.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitAddSubExpression(SolParser.AddSubExpressionContext ctx) {
+        visit(ctx.expr(0));
+        String firstExpressionrType = type;
+        int firstExpressionIndex = byteCodes.size();
+        visit(ctx.expr(1));
+        convertToSameType(firstExpressionrType, firstExpressionIndex);
+        setTypeValue(firstExpressionrType);
+        if(ctx.operador.getText().equals("+")){
+            if(type.equals("string")){
+                byteCodes.add(OpCode.sadd.ordinal());
+            } else if(type.equals("real"))
+                byteCodes.add(OpCode.dadd.ordinal());
+            else
+                byteCodes.add(OpCode.iadd.ordinal());
+        }
+        else if(ctx.operador.getText().equals("-")){
+            if(type.equals("string")){
+                System.out.println("ERRO OPERADOR (-) STRING ");
+                System.exit(0);
+            } else if(type.equals("real"))
+                byteCodes.add(OpCode.dsub.ordinal());
+            else
+                byteCodes.add(OpCode.isub.ordinal());
+        }
+        this.index++;
+        return null;
+    }
+
+    /** Este método visita as expressões de multiplicação, divisão e resto da divisão inteira. São feitas as conversões para o mesmo
+     * tipo e no fim são realizadas as operações. Caso seja uma string, ou booleano, ou uma operação o resto da divisão inteira
+     * entre um, ou dois doubles será apresentado uma mensagem de erro. Caso contrário será adicionado à ArrayList o Opcode da operação.
+     * imult (*), idiv(/), imod(%) entre dois inteiros, ou dmult(*), ddiv(/) entre dois doubles.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitMultDivModExpression(SolParser.MultDivModExpressionContext ctx) {
+        visit(ctx.expr(0));
+        String firstExpressionrType = type;
+        int firstIndex = byteCodes.size();
+        visit(ctx.expr(1));
+        convertToSameType(firstExpressionrType, firstIndex);
+        setTypeValue(firstExpressionrType);
+        if(ctx.operador.getText().equals("*")){
+            if(type.equals("string")){
+                System.out.println("ERRO OPERADOR (*) STRING ");
+                System.exit(0);
+            } else if(type.equals("real"))
+                byteCodes.add(OpCode.dmult.ordinal());
+            else
+                byteCodes.add(OpCode.imult.ordinal());
+        }
+        else if(ctx.operador.getText().equals("/")){
+            if(type.equals("string")){
+                System.out.println("ERRO OPERADOR (/) STRING ");
+                System.exit(0);
+            } else if(type.equals("real"))
+                byteCodes.add(OpCode.ddiv.ordinal());
+            else
+                byteCodes.add(OpCode.idiv.ordinal());
+        } else if(ctx.operador.getText().equals("%")){
+            if(type.equals("string")){
+                System.out.println("ERRO OPERADOR (%) STRING ");
+                System.exit(0);
+            } else if(type.equals("real")){
+                System.out.println("ERRO OPERADOR (%) DOUBLE ");
+                System.exit(0);
+            }
+            else
+                byteCodes.add(OpCode.imod.ordinal());
+        }
+
+        this.index++;
+        return null;
+    }
+
+
+    /** Este método visita a expressão dentro da expressão entre parênteses.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    public Void visitParenthesesExpression(SolParser.ParenthesesExpressionContext ctx) {
+        visit(ctx.expr());
+        this.index++;
+        return null;
+    }
+
+
+
+    /** Este método faz as conversões para as operações lógicas
+     *
+     * @param s String com o tipo da primeira expressão
+     * @param index int com o último index da primeira expressão
+     */
+    private void convertToSameTypeLogicOperation(String s, int index){
+        if(s.equals("bool") && type.equals("bool")) return;
+        else if(s.equals("bool") || type.equals("bool")){
+            System.out.println("ERRO COMPARAR BOOL COM STRING / INT / DOUBLE");
+            System.exit(0);
+        }
+        int comparation = compareTo(s,type);
+        if(comparation == 0)
+            return;
+        else if(comparation == -1){
+            if(s.equals("real"))
+                byteCodes.add(OpCode.itod.ordinal());
+            else {
+                System.out.println("ERRO IDUALIDADES COM STRING E OUTRO TIPO");
+                System.exit(0);
+            }
+        } else if(comparation == 1){
+            if(type.equals("real"))
+                byteCodes.add(index, OpCode.itod.ordinal());
+            else {
+                System.out.println("ERRO IDUALIDADES COM STRING E OUTRO TIPO");
+                System.exit(0);
+            }
+        }else {
+            System.out.println("ERRO (tipos diferentes)");
+            System.exit(0);
+        }
+    }
+
+    /** Este método verifica as expressões de '==' e '!='. Sendo que estas apenas são entre Strings, Booleanos. Ou para o caso entre ints com doubles.
+     * Caso os tipos de comparaveis não possa ser comparado será apresentado uma mensagem com o erro apropriado e o programa encerrará.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitIdualExpression(SolParser.IdualExpressionContext ctx) {
+        visit(ctx.expr(0));
+        int firstExpressionIndex = byteCodes.size();
+        String firstExpressionType = type;
+        visit(ctx.expr(1));
+        convertToSameTypeLogicOperation(firstExpressionType,firstExpressionIndex);  //PROBLEMA ESTA FUNC MATA-SE PARA BOOL CONTORNAR
+        if(ctx.IDUALDADE().getText().equals("==")) {
+            if(type.equals("int"))
+                byteCodes.add(OpCode.ieq.ordinal());
+            else if(type.equals("real"))
+                byteCodes.add(OpCode.deq.ordinal());
+            else if(type.equals("string"))
+                byteCodes.add(OpCode.seq.ordinal());
+            else
+                byteCodes.add(OpCode.beq.ordinal());
+        } else if(ctx.IDUALDADE().getText().equals("!=")) {
+            if(type.equals("int"))
+                byteCodes.add(OpCode.ineq.ordinal());
+            else if(type.equals("real"))
+                byteCodes.add(OpCode.dneq.ordinal());
+            else if(type.equals("string"))
+                byteCodes.add(OpCode.sneq.ordinal());
+            else
+                byteCodes.add(OpCode.bneq.ordinal());
+        }
+        type = "bool";
+        this.index++;
+        return null;
+    }
+
+    /** Caso uma das expressões for booleana, ou String Apresenta mensagem de erro e encerra o programa. Caso contrário
+     * adiciona o Opcode consonate a operação.
+     *
+     * @param op String com o operados
+     * @param s String com o tipo da primeira expressão
+     */
+    private void reels(String op, String s){
+        setTypeValue(s);
+        if(s.equals("bool") || type.equals("bool") || s.equals("string") || type.equals("string")){
+            System.out.println("ERRO IDUAL CONTÉM BOOL / STRING");
+            System.exit(0);
+        }
+        switch (op){
+            case "<":
+            case ">":
+                if(type.equals("real"))byteCodes.add(OpCode.dlt.ordinal());
+                else byteCodes.add(OpCode.ilt.ordinal());
+                break;
+            case "<=":
+            case ">=":
+                if(type.equals("real"))byteCodes.add(OpCode.dleq.ordinal());
+                else byteCodes.add(OpCode.ileq.ordinal());
+                break;
+        }
+    }
+
+
+    /** Este método visita as expressões relacionais ('<', '<=', '>', '>='). Apenas pode recebe expressões de inteiros, ou doubles
+     * caso contrário apresenta uma mensagem de erro no terminal e encerra o programa. Uma vez que os Opcodes contém apenas o caso
+     * de '<' e '<=', quando for preciso fazer as operações '>' e '>=' é preciso converte a ordem que as expressões são dadas na
+     * ArrayList, uma vez que 'a' > 'b' <==> 'b' < 'a'. Por fim verfica-se qaul é o tipo da expressão e dá-se o Opcode necessário
+     * dlt, dleq para doubles, ou ilt, ileq para ints.
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitReelExpression(SolParser.ReelExpressionContext ctx) {
+        String rel = ctx.RELACIONAL().getText();
+        if(rel.equals("<") || rel.equals("<=")){
+            visit(ctx.expr(0));
+            String firstExpressionrType = type;
+            visit(ctx.expr(1));
+            reels(rel, firstExpressionrType);
+        } else {
+            visit(ctx.expr(1));
+            String firstExpressionrType = type;
+            visit(ctx.expr(0));
+            reels(rel, firstExpressionrType);
+        }
+        type = "bool";
+        this.index++;
+        return null;
+    }
+
+
+    /** Este método visita a expressão "and". Para isto verifica se as duas expressões são booleanos, caso sim adicion à ArrayList
+     * o Opcode and, caso contrário dá uma mensagem de erro
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitAndExpression(SolParser.AndExpressionContext ctx) {
+        visit(ctx.expr(0));
+        String firstExpressionrType = type;
+        visit(ctx.expr(1));
+        if(!firstExpressionrType.equals("bool") || !type.equals("bool")){
+            System.out.println("ERRO AND 2 NOT BOOL");
+            System.exit(0);
+        }
+        byteCodes.add(OpCode.and.ordinal());
+        type = "bool";
+        this.index++;
+        return null;
+    }
+
+
+    /** Este método visita a expressão "or". Para isto verifica se as duas expressões são booleanos, caso sim adicion à ArrayList
+     * o Opcode or, caso contrário dá uma mensagem de erro
+     *
+     * @param ctx the parse tree Folha
+     * @return null
+     */
+    @Override
+    public Void visitOrExpression(SolParser.OrExpressionContext ctx) {
+        visit(ctx.expr(0));
+        String firstExpressionrType = type;
+        visit(ctx.expr(1));
+        if(!firstExpressionrType.equals("bool") || !type.equals("bool")){
+            System.out.println("ERRO OR 2 NOT BOOL");
+            System.exit(0);
+        }
+        byteCodes.add(OpCode.or.ordinal());
+        type = "bool";
+        this.index++;
+        return null;
+    }
+
+
+
+    private void insertUniqueVariable(String k, String v){
+        if(variables.containsKey(k)){
+            System.out.println("ERRO PEDRO VAR " + k + "JÁ EXISTE");
+        }
+        variables.put(k,new CustomValue(variables.size(),v));
+    }
+
+    private void newVariables(SolParser.VarContext ctx){
+        String[] params = ctx.getText().split(",");
+        byteCodes.add(OpCode.galloc.ordinal());
+        byteCodes.add(ctx.VARNAME().size());
+        this.index++;
+        int indexVarValue = 0;
+        for(int i = 0; i < ctx.VARNAME().size(); i++){
+            insertUniqueVariable(ctx.VARNAME().get(i).getText(), ctx.VAR().getText());
+            if(params[i].contains("=")) {
+                visit(ctx.expr(indexVarValue));
+
+                if(!ctx.VAR().getText().equals(type)){
+                    System.out.println("ERRO PEDRO\n" + ctx.expr(indexVarValue).getText() + " NOT " + ctx.VAR().getText());
+                }
+                byteCodes.add(OpCode.gstore.ordinal());
+                byteCodes.add(variables.get(ctx.VARNAME().get(i).getText()).index);
+                this.index++;
+                indexVarValue++;
+            }
+        }
+    }
+
+    private void updateVariables(SolParser.VarContext ctx){
+        if(ctx.VARNAME().size() != ctx.expr().size())
+            System.out.println("OHHH PEDRO MATOU-SE NO UPDATEVARIABLES\nVARNAME: " + ctx.VARNAME().size() + "   EXPR: " + ctx.expr().size());
+
+        for(int i = 0; i < ctx.VARNAME().size(); i++){
+            if(!variables.containsKey(ctx.VARNAME(i).getText())){
+                System.out.println("PEDRO VAR NÃO DECLARADA UPDATEVARIABLES " + ctx.VARNAME().get(i).getText());
+            }
+            visit(ctx.expr(i));
+            this.index++;
+            if(!variables.get(ctx.VARNAME(i).getText()).type.equals(type)){
+                System.out.println("ERRO PEDRO\n" + ctx.expr(i).getText() + " NOT " + variables.get(ctx.VARNAME(i).getText()).type);
+            }
+            byteCodes.add(OpCode.gstore.ordinal());
+            byteCodes.add(variables.get(ctx.VARNAME().get(i).getText()).index);
+        }
+    }
+
+    @Override
+    public Void visitVar(SolParser.VarContext ctx){
+        if(ctx.expr().size() > ctx.VARNAME().size()) {
+            System.out.println("VARNAME SIZE: " + ctx.VARNAME().size() + "\nVARS SIZE: " + ctx.expr().size());
+            System.out.println("ERRO PEDRO RESOLVE (VAR)");
+        }
+        if(ctx.VAR() == null)
+            updateVariables(ctx);
+        else
+            newVariables(ctx);
+        return null;
+    }
+
+}

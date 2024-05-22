@@ -1,0 +1,75 @@
+Modo Trace
+
+												Globals: []
+												Stack: []
+	0: galloc 1									IP: 0 FP: 0
+												Globals: [NIL]
+												Stack: []
+	1: dconst 0									IP: 1 FP: 0
+												Globals: [NIL]
+												Stack: [3.14]
+	2: gstore 0									IP: 2 FP: 0
+												Globals: [3.14]
+												Stack: []
+	3: call 13									IP: 3 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4]
+	4: dconst 1									IP: 13 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0]
+	5: iconst 12								IP: 14 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 12]
+	6: iconst 10								IP: 15 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 12, 10]
+	7: isub 									IP: 16 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2]
+	8: iconst 50								IP: 17 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 50]
+	9: iconst 10								IP: 18 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 50, 10]
+	10: idiv 									IP: 19 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5]
+	11: call 5									IP: 20 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21]
+	12: gload 0									IP: 5 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 3.14]
+	13: lload -2								IP: 6 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 3.14, 2]
+	14: itod 									IP: 7 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 3.14, 2.0]
+	15: dmult 									IP: 8 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 6.28]
+	16: lload -1								IP: 9 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 6.28, 5]
+	17: itod 									IP: 10 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 6.28, 5.0]
+	18: dadd 									IP: 11 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 2, 5, 0, 21, 11.280000000000001]
+	19: retval 2								IP: 12 FP: 5
+												Globals: [3.14]
+												Stack: [0, 4, 0.0, 11.280000000000001]
+	20: dadd 									IP: 21 FP: 0
+												Globals: [3.14]
+												Stack: [0, 4, 11.280000000000001]
+	21: dprint 									IP: 22 FP: 0
+	11.280000000000001
+												Globals: [3.14]
+												Stack: [0, 4]
+	22: ret 0									IP: 23 FP: 0
+												Globals: [3.14]
+												Stack: []
+	23: halt 									IP: 4 FP: 0

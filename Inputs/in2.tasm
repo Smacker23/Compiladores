@@ -1,0 +1,14 @@
+L0: call L2
+L1: halt
+L2: iconst 2
+L3: iprint
+L4: iconst 7
+L5: iconst 5
+L6: call L9
+L7: iprint
+L8: ret 0
+L9: lload -2
+L10: lload -1
+L11: imult
+L12: retval 2
+
