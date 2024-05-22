@@ -1,7 +1,7 @@
 # Compiladores
 School project, sol/tasm compiler
 
-Sol
+Sol  
 Sol.g4 grammar
 Peculiaridades de sol.
 Tipos de variáveis
