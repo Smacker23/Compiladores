@@ -1,5 +1,5 @@
 # Compiladores
-School project, sol/tasm compiler
+This is a compiler for Sol/TASM, created as part of my Bachelor's project.
 
 Sol  
 Sol.g4 grammar  
